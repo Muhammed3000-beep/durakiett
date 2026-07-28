@@ -13,17 +13,17 @@
 
 body {
     margin: 0;
-    min-height: 100vh;
     background: #0b0d0f;
     color: #fff;
     font-family: Arial, Helvetica, sans-serif;
+    min-height: 100vh;
 }
 
 header {
     background: #171a1d;
     border-bottom: 2px solid #303438;
-    padding: 18px 15px;
     text-align: center;
+    padding: 18px 12px;
 }
 
 header h1 {
@@ -32,8 +32,8 @@ header h1 {
 }
 
 header p {
-    margin: 7px 0 0;
     color: #9da3a8;
+    margin: 7px 0 0;
     font-size: 13px;
 }
 
@@ -55,7 +55,7 @@ header p {
     font-size: 19px;
 }
 
-/* DURAK EKRANI */
+/* DURAKLAR */
 
 .stop-window {
     display: flex;
@@ -73,6 +73,7 @@ header p {
     border-left: 6px solid #555;
     font-size: 17px;
     font-weight: 600;
+    transition: 0.25s;
 }
 
 .stop.current {
@@ -102,7 +103,7 @@ button {
     background: #30363b;
     font-size: 15px;
     cursor: pointer;
-    transition: .15s;
+    transition: 0.15s;
 }
 
 button:hover {
@@ -110,7 +111,7 @@ button:hover {
 }
 
 button:active {
-    transform: scale(.98);
+    transform: scale(0.98);
 }
 
 .red {
@@ -129,12 +130,12 @@ button:active {
     background: #a85b00;
 }
 
-.dark {
-    background: #42474b;
-}
-
 .help {
     background: #851515;
+}
+
+.dark {
+    background: #42474b;
 }
 
 /* DURUM */
@@ -153,7 +154,7 @@ button:active {
     font-size: 14px;
 }
 
-/* MODAL */
+/* MODALLAR */
 
 .modal-bg {
     display: none;
@@ -210,6 +211,8 @@ button:active {
     width: 100%;
     margin-top: 8px;
 }
+
+/* MOBİL */
 
 @media(max-width:600px) {
 
@@ -394,30 +397,27 @@ button:active {
 
 <script>
 
-/*
-=========================================================
-İETT 34G - BEYLİKDÜZÜ SON DURAK → SÖĞÜTLÜÇEŞME
-İETT resmi güzergâhındaki 44 durak
-=========================================================
-*/
+/* =====================================================
+   DURAK LİSTESİ
+   ===================================================== */
 
 const stops = [
 
-    "B.SONDURAK",
+    "B. SON DURAK",
     "BEYKENT",
     "CUMHURİYET MAHALLESİ",
-    "B.BELEDİYE",
+    "BEYLİKDÜZÜ BELEDİYESİ",
     "BEYLİKDÜZÜ",
     "GÜZELYURT",
     "HARAMİDERE",
-    "H.SANAYİ",
+    "HARAMİDERE SANAYİ",
     "SAADETDERE MAHALLESİ",
     "MUSTAFA KEMALPAŞA",
 
-    "CİHANGİR - ÜNİV. MAH.",
-    "AVCILAR MRK.ÜNV.KMP.",
+    "CİHANGİR - ÜNİVERSİTE MAHALLESİ",
+    "AVCILAR MERKEZ ÜNİVERSİTE KAMPÜSÜ",
     "ŞÜKRÜBEY",
-    "İBB SOSYAL TESİSLERİ",
+    "İSTANBUL BÜYÜKŞEHİR BELEDİYESİ SOSYAL TESİSLERİ",
     "KÜÇÜKÇEKMECE",
     "CENNET MAHALLESİ",
     "FLORYA",
@@ -432,10 +432,10 @@ const stops = [
     "TOPKAPI",
     "CEVİZLİBAĞ",
     "EDİRNEKAPI",
-    "AYVANSARAY EYÜPSULTAN",
+    "AYVANSARAY - EYÜPSULTAN",
     "HALICIOĞLU",
     "OKMEYDANI",
-    "DARÜLACEZE PERPA",
+    "DARÜLACEZE - PERPA",
     "OKMEYDANI HASTANE",
     "ÇAĞLAYAN",
     "MECİDİYEKÖY",
@@ -450,28 +450,19 @@ const stops = [
 
 ];
 
-
-/*
-=========================================================
-SİSTEM DEĞİŞKENLERİ
-=========================================================
-*/
-
 let currentIndex = 0;
 
 let climateRunning = false;
 
 let selectedClimate = null;
 
+let movingAutomatically = false;
 
-/*
-=========================================================
-DURAK EKRANI
 
-Her zaman 4 satır gösterilir.
-Liste bittikçe kalan satırlar nokta olur.
-=========================================================
-*/
+/* =====================================================
+   DURAKLARI GÖSTER
+   SADECE 4 SATIR
+   ===================================================== */
 
 function renderStops() {
 
@@ -499,8 +490,8 @@ function renderStops() {
         } else {
 
             div.className = "stop empty";
-            div.textContent = "....................";
 
+            div.textContent = "....................";
         }
 
         windowElement.appendChild(div);
@@ -508,18 +499,116 @@ function renderStops() {
 }
 
 
-/*
-=========================================================
-TÜRKÇE GERÇEK SESLİ ANONS
-=========================================================
-*/
+/* =====================================================
+   KADIN TÜRKÇE SES ÖNCELİKLİ SESLENDİRME
+   ===================================================== */
 
-function speak(text) {
+function getTurkishFemaleVoice() {
+
+    const voices =
+        window.speechSynthesis.getVoices();
+
+    const femaleKeywords = [
+
+        "female",
+        "woman",
+        "kadın",
+        "zira",
+        "yelda",
+        "defne",
+        "seda",
+        "emine",
+        "filiz",
+        "burcu",
+        "melis"
+
+    ];
+
+    /*
+     * Önce Türkçe + kadın adı/etiketi arıyoruz.
+     */
+
+    let femaleVoice =
+        voices.find(voice => {
+
+            const lang =
+                (voice.lang || "").toLowerCase();
+
+            const name =
+                (voice.name || "").toLowerCase();
+
+            return (
+                lang.startsWith("tr") &&
+                femaleKeywords.some(keyword =>
+                    name.includes(keyword)
+                )
+            );
+
+        });
+
+
+    /*
+     * Bazı cihazlarda kadın sesi
+     * "female" şeklinde belirtilir.
+     */
+
+    if (!femaleVoice) {
+
+        femaleVoice =
+            voices.find(voice => {
+
+                const lang =
+                    (voice.lang || "").toLowerCase();
+
+                const name =
+                    (voice.name || "").toLowerCase();
+
+                return (
+                    lang.startsWith("tr") &&
+                    (
+                        name.includes("female") ||
+                        name.includes("woman") ||
+                        name.includes("kad")
+                    )
+                );
+
+            });
+
+    }
+
+
+    /*
+     * Kadın sesi yoksa herhangi bir Türkçe ses.
+     */
+
+    if (!femaleVoice) {
+
+        femaleVoice =
+            voices.find(voice => {
+
+                const lang =
+                    (voice.lang || "").toLowerCase();
+
+                return lang.startsWith("tr");
+
+            });
+
+    }
+
+    return femaleVoice || null;
+}
+
+
+/* =====================================================
+   İETT TARZI SESLİ ANONS
+   ===================================================== */
+
+function speak(text, onEnd = null) {
 
     if (!("speechSynthesis" in window)) {
 
         alert(
-            "Bu tarayıcı sesli anons özelliğini desteklemiyor."
+            "Bu tarayıcı sesli anonsu desteklemiyor."
         );
 
         return;
@@ -527,68 +616,70 @@ function speak(text) {
 
     window.speechSynthesis.cancel();
 
+    /*
+     * Anons metnini biraz daha doğal yapıyoruz.
+     */
+
     const utterance =
         new SpeechSynthesisUtterance(text);
 
     utterance.lang = "tr-TR";
 
-    utterance.rate = 0.82;
-
-    utterance.pitch = 1;
-
-    utterance.volume = 1;
-
-
     /*
-    Türkçe ses bulmaya çalış.
-    */
+     * İETT tarzı:
+     * yavaş + anlaşılır.
+     */
 
-    const voices =
-        window.speechSynthesis.getVoices();
+    utterance.rate = 0.68;
 
-    const turkishVoice =
-        voices.find(
-            voice =>
-                voice.lang &&
-                voice.lang.toLowerCase().startsWith("tr")
-        );
+    utterance.pitch = 1.0;
 
-    if (turkishVoice) {
+    utterance.volume = 1.0;
 
-        utterance.voice = turkishVoice;
 
+    const voice =
+        getTurkishFemaleVoice();
+
+    if (voice) {
+        utterance.voice = voice;
     }
 
 
-    window.speechSynthesis.speak(utterance);
+    /*
+     * Anons bitince yapılacak işlem.
+     */
+
+    utterance.onend = function() {
+
+        if (typeof onEnd === "function") {
+            onEnd();
+        }
+
+    };
+
+
+    /*
+     * Küçük gecikme,
+     * anonsun daha doğal başlamasını sağlar.
+     */
+
+    setTimeout(() => {
+
+        window.speechSynthesis.speak(utterance);
+
+    }, 250);
 }
 
 
-/*
-=========================================================
-ŞİMDİKİ DURAK
-
-Mevcut durağı seslendirir.
-Ardından bir sonraki durağa geçer.
-
-Böylece:
-
-ACIBADEM
-UZUNÇAYIR
-FİKİRTEPE
-SÖĞÜTLÜÇEŞME
-
-↓
-
-UZUNÇAYIR
-FİKİRTEPE
-SÖĞÜTLÜÇEŞME
-............
-
-=========================================================
-*/
+/* =====================================================
+   ŞİMDİKİ DURAK
+   ===================================================== */
 
 function announceCurrent() {
+
+    if (movingAutomatically) {
+        return;
+    }
 
     if (currentIndex >= stops.length) {
 
@@ -599,81 +690,31 @@ function announceCurrent() {
         return;
     }
 
-
     const stop =
         stops[currentIndex];
-
 
     setStatus(
         "Şimdiki Durak: " + stop
     );
 
 
+    /*
+     * Örneğin:
+     *
+     * "Şimdiki Durak... Acıbadem."
+     */
+
     speak(
-        "Şimdiki Durak. " + stop
+        "Şimdiki Durak... " +
+        stop + "."
     );
 
-
-    /*
-    Anons başladıktan hemen sonra değil,
-    anonsun bitişinde durak ilerlesin.
-    */
-
-    waitForSpeechAndMove();
-
 }
 
 
-/*
-=========================================================
-SES BİTİNCE DURAK İLERLET
-=========================================================
-*/
-
-function waitForSpeechAndMove() {
-
-    const check =
-        setInterval(function() {
-
-            if (!window.speechSynthesis.speaking) {
-
-                clearInterval(check);
-
-                moveOneStop();
-
-            }
-
-        }, 100);
-
-}
-
-
-/*
-=========================================================
-BİR DURAK İLERİ
-=========================================================
-*/
-
-function moveOneStop() {
-
-    if (currentIndex < stops.length - 1) {
-
-        currentIndex++;
-
-        renderStops();
-
-    }
-
-}
-
-
-/*
-=========================================================
-SONRAKİ DURAK
-
-Bir sonraki durağı söyler ve o durağa geçer.
-=========================================================
-*/
+/* =====================================================
+   SONRAKİ DURAK
+   ===================================================== */
 
 function goNextStop() {
 
@@ -702,68 +743,56 @@ function goNextStop() {
 
 
     speak(
-        "Sonraki Durak. " + stop
+        "Sonraki Durak... " +
+        stop + "."
     );
-
 }
 
 
-/*
-=========================================================
-DURUM MESAJI
-=========================================================
-*/
+/* =====================================================
+   DURUM
+   ===================================================== */
 
 function setStatus(message) {
 
     document.getElementById(
         "status"
     ).textContent = message;
-
 }
 
 
-/*
-=========================================================
-AYARLAR
-=========================================================
-*/
+/* =====================================================
+   AYARLAR
+   ===================================================== */
 
 function openSettings() {
 
     document.getElementById(
         "settingsModal"
     ).style.display = "flex";
-
 }
-
 
 function closeSettings() {
 
     document.getElementById(
         "settingsModal"
     ).style.display = "none";
-
 }
 
 
-/*
-=========================================================
-KLİMA
-=========================================================
-*/
+/* =====================================================
+   KLİMA
+   ===================================================== */
 
 function toggleClimate() {
 
     climateRunning =
         !climateRunning;
 
-
     const status =
         document.getElementById(
             "climateStatus"
         );
-
 
     if (climateRunning) {
 
@@ -777,16 +806,13 @@ function toggleClimate() {
 
             status.textContent =
                 "Klimalar çalışıyor.";
-
         }
 
     } else {
 
         status.textContent =
             "Klimalar kapalı.";
-
     }
-
 }
 
 
@@ -795,12 +821,10 @@ function selectClimate(number) {
     selectedClimate =
         number;
 
-
     const status =
         document.getElementById(
             "climateStatus"
         );
-
 
     if (climateRunning) {
 
@@ -813,26 +837,17 @@ function selectClimate(number) {
         status.textContent =
             number +
             ". Reon seçildi.";
-
     }
-
 }
 
 
-/*
-=========================================================
-SİSTEMİ YENİDEN BAŞLAT
-=========================================================
-*/
+/* =====================================================
+   SİSTEMİ YENİDEN BAŞLAT
+   ===================================================== */
 
 function restartSystem() {
 
-    /*
-    Ses varsa durdur.
-    */
-
     window.speechSynthesis.cancel();
-
 
     currentIndex = 0;
 
@@ -840,43 +855,36 @@ function restartSystem() {
 
     selectedClimate = null;
 
+    movingAutomatically = false;
 
     renderStops();
-
 
     document.getElementById(
         "climateStatus"
     ).textContent =
         "Klimalar kapalı.";
 
-
     setStatus(
         "Sistem yeniden başlatıldı. İlk durağa dönüldü."
     );
-
 
     speak(
         "Sistem yeniden başlatıldı."
     );
 
-
     closeSettings();
-
 }
 
 
-/*
-=========================================================
-YARDIM
-=========================================================
-*/
+/* =====================================================
+   YARDIM
+   ===================================================== */
 
 function openHelp() {
 
     document.getElementById(
         "helpModal"
     ).style.display = "flex";
-
 }
 
 
@@ -885,17 +893,13 @@ function closeHelp() {
     document.getElementById(
         "helpModal"
     ).style.display = "none";
-
 }
 
 
-/*
-=========================================================
-112 SİMÜLASYONU
-
-GERÇEK ARAMA YAPMAZ.
-=========================================================
-*/
+/* =====================================================
+   112 SİMÜLASYONU
+   GERÇEK ARAMA YOK
+   ===================================================== */
 
 function call112() {
 
@@ -903,29 +907,23 @@ function call112() {
         "112 arandı. Bu bir simülasyondur."
     );
 
-
     alert(
         "112 arandı.\n\n" +
         "Bu bir simülasyondur. " +
         "Gerçek arama yapılmadı."
     );
 
-
     speak(
         "112 arandı. Bu bir simülasyondur."
     );
 
-
     closeHelp();
-
 }
 
 
-/*
-=========================================================
-DİĞER YARDIM SEÇENEKLERİ
-=========================================================
-*/
+/* =====================================================
+   YARDIM SEÇENEKLERİ
+   ===================================================== */
 
 function helpAction(action) {
 
@@ -934,7 +932,6 @@ function helpAction(action) {
         " seçildi. Bu bir simülasyondur."
     );
 
-
     alert(
         action +
         "\n\n" +
@@ -942,33 +939,29 @@ function helpAction(action) {
         "Bu bir simülasyondur."
     );
 
-
     speak(
         action +
         ". Yardım talebi oluşturuldu."
     );
 
-
     closeHelp();
-
 }
 
 
-/*
-=========================================================
-BAŞLANGIÇ
-=========================================================
-*/
+/* =====================================================
+   BAŞLANGIÇ
+   ===================================================== */
 
 renderStops();
 
 
 /*
-Bazı tarayıcılar sesleri sayfa açıldıktan
-sonra yüklediği için bunu dinliyoruz.
-*/
+ * Ses listesini yükle.
+ */
 
 if ("speechSynthesis" in window) {
+
+    window.speechSynthesis.getVoices();
 
     window.speechSynthesis.onvoiceschanged =
         function() {
@@ -976,7 +969,6 @@ if ("speechSynthesis" in window) {
             window.speechSynthesis.getVoices();
 
         };
-
 }
 
 </script>
