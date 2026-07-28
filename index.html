@@ -1,0 +1,986 @@
+```html
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İETT Metrobüs Simülasyonu</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #0b0d0f;
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+header {
+    background: #171a1d;
+    border-bottom: 2px solid #303438;
+    padding: 18px 15px;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+header p {
+    margin: 7px 0 0;
+    color: #9da3a8;
+    font-size: 13px;
+}
+
+.container {
+    width: min(850px, 94%);
+    margin: 25px auto;
+}
+
+.panel {
+    background: #171a1d;
+    border: 1px solid #303438;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 18px;
+}
+
+.panel h2 {
+    margin: 0 0 15px;
+    font-size: 19px;
+}
+
+/* DURAK EKRANI */
+
+.stop-window {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.stop {
+    height: 63px;
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    background: #252a2e;
+    border-radius: 9px;
+    border-left: 6px solid #555;
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.stop.current {
+    background: #30373c;
+    border-left-color: #00c853;
+}
+
+.stop.empty {
+    color: #777;
+    border-left-color: #333;
+    font-weight: normal;
+}
+
+/* BUTONLAR */
+
+.buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+button {
+    border: 0;
+    border-radius: 9px;
+    padding: 15px;
+    color: white;
+    background: #30363b;
+    font-size: 15px;
+    cursor: pointer;
+    transition: .15s;
+}
+
+button:hover {
+    filter: brightness(1.2);
+}
+
+button:active {
+    transform: scale(.98);
+}
+
+.red {
+    background: #d60000;
+}
+
+.blue {
+    background: #1261a0;
+}
+
+.green {
+    background: #087f23;
+}
+
+.orange {
+    background: #a85b00;
+}
+
+.dark {
+    background: #42474b;
+}
+
+.help {
+    background: #851515;
+}
+
+/* DURUM */
+
+.status {
+    margin-top: 14px;
+    background: #22272b;
+    border-radius: 8px;
+    padding: 12px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #c4c9cc;
+    font-size: 14px;
+}
+
+/* MODAL */
+
+.modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.78);
+    z-index: 50;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+}
+
+.modal {
+    width: min(600px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    background: #191d20;
+    border: 1px solid #3b4146;
+    border-radius: 15px;
+    padding: 22px;
+}
+
+.modal h2 {
+    margin-top: 0;
+}
+
+.modal-buttons {
+    display: grid;
+    gap: 10px;
+}
+
+.modal-buttons button {
+    text-align: left;
+}
+
+.close {
+    width: 100%;
+    margin-top: 15px;
+}
+
+.climate-box {
+    background: #23282c;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.climate-box strong {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.climate-box button {
+    width: 100%;
+    margin-top: 8px;
+}
+
+@media(max-width:600px) {
+
+    .buttons {
+        grid-template-columns: 1fr;
+    }
+
+    .stop {
+        height: 58px;
+        font-size: 14px;
+        padding: 0 12px;
+    }
+
+    header h1 {
+        font-size: 20px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>İETT METROBÜS SİMÜLASYONU</h1>
+    <p>34G • Beylikdüzü Son Durak → Söğütlüçeşme</p>
+</header>
+
+<div class="container">
+
+    <div class="panel">
+
+        <h2>DURAKLAR</h2>
+
+        <div id="stopWindow" class="stop-window"></div>
+
+        <div id="status" class="status">
+            Sistem hazır.
+        </div>
+
+    </div>
+
+    <div class="panel">
+
+        <h2>Kontroller</h2>
+
+        <div class="buttons">
+
+            <button class="red" onclick="announceCurrent()">
+                🔊 Şimdiki Durak
+            </button>
+
+            <button class="blue" onclick="goNextStop()">
+                ➡️ Sonraki Durak
+            </button>
+
+            <button class="orange" onclick="openSettings()">
+                ⚙️ Ayarlar
+            </button>
+
+            <button class="help" onclick="openHelp()">
+                🆘 Yardım
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- AYARLAR -->
+
+<div id="settingsModal" class="modal-bg">
+
+    <div class="modal">
+
+        <h2>⚙️ Ayarlar</h2>
+
+        <div class="climate-box">
+
+            <strong>❄️ Klimaları Çalıştır</strong>
+
+            <button class="green" onclick="toggleClimate()">
+                Klimaları Çalıştır / Durdur
+            </button>
+
+            <button onclick="selectClimate(1)">
+                1. Reon
+            </button>
+
+            <button onclick="selectClimate(2)">
+                2. Reon
+            </button>
+
+            <button onclick="selectClimate(3)">
+                3. Reon
+            </button>
+
+            <div id="climateStatus" class="status">
+                Klimalar kapalı.
+            </div>
+
+        </div>
+
+        <button class="red" onclick="restartSystem()">
+            🔄 Sistemi Yeniden Başlat
+        </button>
+
+        <button class="close dark" onclick="closeSettings()">
+            Kapat
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- YARDIM -->
+
+<div id="helpModal" class="modal-bg">
+
+    <div class="modal">
+
+        <h2>🆘 Yardım</h2>
+
+        <div class="modal-buttons">
+
+            <button class="red" onclick="call112()">
+                📞 112 Acil Yardım Hattını Ara
+            </button>
+
+            <button onclick="helpAction('Sadece Yardım (Polis)')">
+                👮 Sadece Yardım (Polis)
+            </button>
+
+            <button onclick="helpAction('Sadece Yardım (Ambulans)')">
+                🚑 Sadece Yardım (Ambulans)
+            </button>
+
+            <button onclick="helpAction('Sadece Yardım (İtfaiye)')">
+                🚒 Sadece Yardım (İtfaiye)
+            </button>
+
+            <button onclick="helpAction('Sadece Yardım (BİE)')">
+                🆘 Sadece Yardım (BİE)
+            </button>
+
+            <button onclick="helpAction('Kaza Yaptım')">
+                ⚠️ Kaza Yaptım
+            </button>
+
+            <button onclick="helpAction('Tacize Uğradım')">
+                🚨 Tacize Uğradım
+            </button>
+
+            <button onclick="helpAction('Yolcudan Rahatsızım')">
+                😟 Yolcudan Rahatsızım
+            </button>
+
+            <button onclick="helpAction('Tehdide Uğruyorum')">
+                ⚠️ Tehdide Uğruyorum
+            </button>
+
+            <button onclick="helpAction('Rahatsızlık Geçirdim')">
+                🏥 Rahatsızlık Geçirdim
+            </button>
+
+            <button onclick="helpAction('Yolcu Rahatsızlık Geçirdi')">
+                🏥 Yolcu Rahatsızlık Geçirdi
+            </button>
+
+        </div>
+
+        <button class="close dark" onclick="closeHelp()">
+            Kapat
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/*
+=========================================================
+İETT 34G - BEYLİKDÜZÜ SON DURAK → SÖĞÜTLÜÇEŞME
+İETT resmi güzergâhındaki 44 durak
+=========================================================
+*/
+
+const stops = [
+
+    "B.SONDURAK",
+    "BEYKENT",
+    "CUMHURİYET MAHALLESİ",
+    "B.BELEDİYE",
+    "BEYLİKDÜZÜ",
+    "GÜZELYURT",
+    "HARAMİDERE",
+    "H.SANAYİ",
+    "SAADETDERE MAHALLESİ",
+    "MUSTAFA KEMALPAŞA",
+
+    "CİHANGİR - ÜNİV. MAH.",
+    "AVCILAR MRK.ÜNV.KMP.",
+    "ŞÜKRÜBEY",
+    "İBB SOSYAL TESİSLERİ",
+    "KÜÇÜKÇEKMECE",
+    "CENNET MAHALLESİ",
+    "FLORYA",
+    "BEŞYOL",
+    "SEFAKÖY",
+    "YENİBOSNA",
+    "ŞİRİNEVLER",
+    "BAHÇELİEVLER",
+    "İNCİRLİ",
+    "ZEYTİNBURNU",
+    "MERTER",
+    "TOPKAPI",
+    "CEVİZLİBAĞ",
+    "EDİRNEKAPI",
+    "AYVANSARAY EYÜPSULTAN",
+    "HALICIOĞLU",
+    "OKMEYDANI",
+    "DARÜLACEZE PERPA",
+    "OKMEYDANI HASTANE",
+    "ÇAĞLAYAN",
+    "MECİDİYEKÖY",
+    "ZİNCİRLİKUYU",
+    "15 TEMMUZ ŞEHİTLER KÖPRÜSÜ",
+    "BURHANİYE",
+    "ALTUNİZADE",
+    "ACIBADEM",
+    "UZUNÇAYIR",
+    "FİKİRTEPE",
+    "SÖĞÜTLÜÇEŞME"
+
+];
+
+
+/*
+=========================================================
+SİSTEM DEĞİŞKENLERİ
+=========================================================
+*/
+
+let currentIndex = 0;
+
+let climateRunning = false;
+
+let selectedClimate = null;
+
+
+/*
+=========================================================
+DURAK EKRANI
+
+Her zaman 4 satır gösterilir.
+Liste bittikçe kalan satırlar nokta olur.
+=========================================================
+*/
+
+function renderStops() {
+
+    const windowElement =
+        document.getElementById("stopWindow");
+
+    windowElement.innerHTML = "";
+
+    for (let i = 0; i < 4; i++) {
+
+        const stopIndex = currentIndex + i;
+
+        const div = document.createElement("div");
+
+        if (stopIndex < stops.length) {
+
+            div.className = "stop";
+
+            if (i === 0) {
+                div.classList.add("current");
+            }
+
+            div.textContent = stops[stopIndex];
+
+        } else {
+
+            div.className = "stop empty";
+            div.textContent = "....................";
+
+        }
+
+        windowElement.appendChild(div);
+    }
+}
+
+
+/*
+=========================================================
+TÜRKÇE GERÇEK SESLİ ANONS
+=========================================================
+*/
+
+function speak(text) {
+
+    if (!("speechSynthesis" in window)) {
+
+        alert(
+            "Bu tarayıcı sesli anons özelliğini desteklemiyor."
+        );
+
+        return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utterance =
+        new SpeechSynthesisUtterance(text);
+
+    utterance.lang = "tr-TR";
+
+    utterance.rate = 0.82;
+
+    utterance.pitch = 1;
+
+    utterance.volume = 1;
+
+
+    /*
+    Türkçe ses bulmaya çalış.
+    */
+
+    const voices =
+        window.speechSynthesis.getVoices();
+
+    const turkishVoice =
+        voices.find(
+            voice =>
+                voice.lang &&
+                voice.lang.toLowerCase().startsWith("tr")
+        );
+
+    if (turkishVoice) {
+
+        utterance.voice = turkishVoice;
+
+    }
+
+
+    window.speechSynthesis.speak(utterance);
+}
+
+
+/*
+=========================================================
+ŞİMDİKİ DURAK
+
+Mevcut durağı seslendirir.
+Ardından bir sonraki durağa geçer.
+
+Böylece:
+
+ACIBADEM
+UZUNÇAYIR
+FİKİRTEPE
+SÖĞÜTLÜÇEŞME
+
+↓
+
+UZUNÇAYIR
+FİKİRTEPE
+SÖĞÜTLÜÇEŞME
+............
+
+=========================================================
+*/
+
+function announceCurrent() {
+
+    if (currentIndex >= stops.length) {
+
+        setStatus("Son durağa ulaşıldı.");
+
+        speak("Son durağa ulaşıldı.");
+
+        return;
+    }
+
+
+    const stop =
+        stops[currentIndex];
+
+
+    setStatus(
+        "Şimdiki Durak: " + stop
+    );
+
+
+    speak(
+        "Şimdiki Durak. " + stop
+    );
+
+
+    /*
+    Anons başladıktan hemen sonra değil,
+    anonsun bitişinde durak ilerlesin.
+    */
+
+    waitForSpeechAndMove();
+
+}
+
+
+/*
+=========================================================
+SES BİTİNCE DURAK İLERLET
+=========================================================
+*/
+
+function waitForSpeechAndMove() {
+
+    const check =
+        setInterval(function() {
+
+            if (!window.speechSynthesis.speaking) {
+
+                clearInterval(check);
+
+                moveOneStop();
+
+            }
+
+        }, 100);
+
+}
+
+
+/*
+=========================================================
+BİR DURAK İLERİ
+=========================================================
+*/
+
+function moveOneStop() {
+
+    if (currentIndex < stops.length - 1) {
+
+        currentIndex++;
+
+        renderStops();
+
+    }
+
+}
+
+
+/*
+=========================================================
+SONRAKİ DURAK
+
+Bir sonraki durağı söyler ve o durağa geçer.
+=========================================================
+*/
+
+function goNextStop() {
+
+    if (currentIndex >= stops.length - 1) {
+
+        setStatus("Son duraktasınız.");
+
+        speak("Son duraktasınız.");
+
+        return;
+    }
+
+
+    currentIndex++;
+
+    renderStops();
+
+
+    const stop =
+        stops[currentIndex];
+
+
+    setStatus(
+        "Sonraki Durak: " + stop
+    );
+
+
+    speak(
+        "Sonraki Durak. " + stop
+    );
+
+}
+
+
+/*
+=========================================================
+DURUM MESAJI
+=========================================================
+*/
+
+function setStatus(message) {
+
+    document.getElementById(
+        "status"
+    ).textContent = message;
+
+}
+
+
+/*
+=========================================================
+AYARLAR
+=========================================================
+*/
+
+function openSettings() {
+
+    document.getElementById(
+        "settingsModal"
+    ).style.display = "flex";
+
+}
+
+
+function closeSettings() {
+
+    document.getElementById(
+        "settingsModal"
+    ).style.display = "none";
+
+}
+
+
+/*
+=========================================================
+KLİMA
+=========================================================
+*/
+
+function toggleClimate() {
+
+    climateRunning =
+        !climateRunning;
+
+
+    const status =
+        document.getElementById(
+            "climateStatus"
+        );
+
+
+    if (climateRunning) {
+
+        if (selectedClimate) {
+
+            status.textContent =
+                selectedClimate +
+                ". Reon çalışıyor.";
+
+        } else {
+
+            status.textContent =
+                "Klimalar çalışıyor.";
+
+        }
+
+    } else {
+
+        status.textContent =
+            "Klimalar kapalı.";
+
+    }
+
+}
+
+
+function selectClimate(number) {
+
+    selectedClimate =
+        number;
+
+
+    const status =
+        document.getElementById(
+            "climateStatus"
+        );
+
+
+    if (climateRunning) {
+
+        status.textContent =
+            number +
+            ". Reon çalışıyor.";
+
+    } else {
+
+        status.textContent =
+            number +
+            ". Reon seçildi.";
+
+    }
+
+}
+
+
+/*
+=========================================================
+SİSTEMİ YENİDEN BAŞLAT
+=========================================================
+*/
+
+function restartSystem() {
+
+    /*
+    Ses varsa durdur.
+    */
+
+    window.speechSynthesis.cancel();
+
+
+    currentIndex = 0;
+
+    climateRunning = false;
+
+    selectedClimate = null;
+
+
+    renderStops();
+
+
+    document.getElementById(
+        "climateStatus"
+    ).textContent =
+        "Klimalar kapalı.";
+
+
+    setStatus(
+        "Sistem yeniden başlatıldı. İlk durağa dönüldü."
+    );
+
+
+    speak(
+        "Sistem yeniden başlatıldı."
+    );
+
+
+    closeSettings();
+
+}
+
+
+/*
+=========================================================
+YARDIM
+=========================================================
+*/
+
+function openHelp() {
+
+    document.getElementById(
+        "helpModal"
+    ).style.display = "flex";
+
+}
+
+
+function closeHelp() {
+
+    document.getElementById(
+        "helpModal"
+    ).style.display = "none";
+
+}
+
+
+/*
+=========================================================
+112 SİMÜLASYONU
+
+GERÇEK ARAMA YAPMAZ.
+=========================================================
+*/
+
+function call112() {
+
+    setStatus(
+        "112 arandı. Bu bir simülasyondur."
+    );
+
+
+    alert(
+        "112 arandı.\n\n" +
+        "Bu bir simülasyondur. " +
+        "Gerçek arama yapılmadı."
+    );
+
+
+    speak(
+        "112 arandı. Bu bir simülasyondur."
+    );
+
+
+    closeHelp();
+
+}
+
+
+/*
+=========================================================
+DİĞER YARDIM SEÇENEKLERİ
+=========================================================
+*/
+
+function helpAction(action) {
+
+    setStatus(
+        action +
+        " seçildi. Bu bir simülasyondur."
+    );
+
+
+    alert(
+        action +
+        "\n\n" +
+        "Yardım talebi oluşturuldu.\n" +
+        "Bu bir simülasyondur."
+    );
+
+
+    speak(
+        action +
+        ". Yardım talebi oluşturuldu."
+    );
+
+
+    closeHelp();
+
+}
+
+
+/*
+=========================================================
+BAŞLANGIÇ
+=========================================================
+*/
+
+renderStops();
+
+
+/*
+Bazı tarayıcılar sesleri sayfa açıldıktan
+sonra yüklediği için bunu dinliyoruz.
+*/
+
+if ("speechSynthesis" in window) {
+
+    window.speechSynthesis.onvoiceschanged =
+        function() {
+
+            window.speechSynthesis.getVoices();
+
+        };
+
+}
+
+</script>
+
+</body>
+</html>
+```
