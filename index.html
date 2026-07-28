@@ -14,7 +14,7 @@
 body {
     margin: 0;
     background: #0b0d0f;
-    color: #fff;
+    color: white;
     font-family: Arial, Helvetica, sans-serif;
     min-height: 100vh;
 }
@@ -55,7 +55,7 @@ header p {
     font-size: 19px;
 }
 
-/* DURAKLAR */
+/* DURAK EKRANI */
 
 .stop-window {
     display: flex;
@@ -154,7 +154,7 @@ button:active {
     font-size: 14px;
 }
 
-/* MODALLAR */
+/* MODAL */
 
 .modal-bg {
     display: none;
@@ -242,6 +242,8 @@ button:active {
 
 <div class="container">
 
+    <!-- DURAKLAR -->
+
     <div class="panel">
 
         <h2>DURAKLAR</h2>
@@ -253,6 +255,9 @@ button:active {
         </div>
 
     </div>
+
+
+    <!-- ANA BUTONLAR -->
 
     <div class="panel">
 
@@ -283,7 +288,9 @@ button:active {
 </div>
 
 
-<!-- AYARLAR -->
+<!-- =====================================================
+     AYARLAR
+     ===================================================== -->
 
 <div id="settingsModal" class="modal-bg">
 
@@ -330,7 +337,9 @@ button:active {
 </div>
 
 
-<!-- YARDIM -->
+<!-- =====================================================
+     YARDIM
+     ===================================================== -->
 
 <div id="helpModal" class="modal-bg">
 
@@ -450,13 +459,14 @@ const stops = [
 
 ];
 
+
 let currentIndex = 0;
 
 let climateRunning = false;
 
 let selectedClimate = null;
 
-let movingAutomatically = false;
+let announcementBusy = false;
 
 
 /* =====================================================
@@ -473,9 +483,12 @@ function renderStops() {
 
     for (let i = 0; i < 4; i++) {
 
-        const stopIndex = currentIndex + i;
+        const stopIndex =
+            currentIndex + i;
 
-        const div = document.createElement("div");
+        const div =
+            document.createElement("div");
+
 
         if (stopIndex < stops.length) {
 
@@ -485,13 +498,17 @@ function renderStops() {
                 div.classList.add("current");
             }
 
-            div.textContent = stops[stopIndex];
+            div.textContent =
+                stops[stopIndex];
 
         } else {
 
-            div.className = "stop empty";
+            div.className =
+                "stop empty";
 
-            div.textContent = "....................";
+            div.textContent =
+                "....................";
+
         }
 
         windowElement.appendChild(div);
@@ -500,94 +517,167 @@ function renderStops() {
 
 
 /* =====================================================
-   KADIN TÜRKÇE SES ÖNCELİKLİ SESLENDİRME
+   DİN-DON SESİ
+   HARİCİ MP3 GEREKTİRMEZ
    ===================================================== */
 
-function getTurkishFemaleVoice() {
+function playDingDong() {
+
+    const AudioContext =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+
+    if (!AudioContext) {
+        return;
+    }
+
+
+    const ctx =
+        new AudioContext();
+
+
+    const now =
+        ctx.currentTime;
+
+
+    /*
+     * İLK SES: DİN
+     */
+
+    const osc1 =
+        ctx.createOscillator();
+
+    const gain1 =
+        ctx.createGain();
+
+
+    osc1.type = "sine";
+
+    osc1.frequency.setValueAtTime(
+        880,
+        now
+    );
+
+
+    gain1.gain.setValueAtTime(
+        0.0001,
+        now
+    );
+
+    gain1.gain.exponentialRampToValueAtTime(
+        0.30,
+        now + 0.015
+    );
+
+    gain1.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.30
+    );
+
+
+    osc1.connect(gain1);
+
+    gain1.connect(
+        ctx.destination
+    );
+
+
+    osc1.start(now);
+
+    osc1.stop(
+        now + 0.32
+    );
+
+
+    /*
+     * İKİNCİ SES: DON
+     */
+
+    const osc2 =
+        ctx.createOscillator();
+
+    const gain2 =
+        ctx.createGain();
+
+
+    osc2.type = "sine";
+
+    osc2.frequency.setValueAtTime(
+        660,
+        now + 0.34
+    );
+
+
+    gain2.gain.setValueAtTime(
+        0.0001,
+        now + 0.34
+    );
+
+    gain2.gain.exponentialRampToValueAtTime(
+        0.30,
+        now + 0.355
+    );
+
+    gain2.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.70
+    );
+
+
+    osc2.connect(gain2);
+
+    gain2.connect(
+        ctx.destination
+    );
+
+
+    osc2.start(
+        now + 0.34
+    );
+
+    osc2.stop(
+        now + 0.72
+    );
+
+
+    setTimeout(() => {
+
+        ctx.close();
+
+    }, 1000);
+}
+
+
+/* =====================================================
+   TÜRKÇE SES BUL
+   WINDOWS'TA GENELLİKLE TOLGA
+   ===================================================== */
+
+function getTurkishVoice() {
 
     const voices =
         window.speechSynthesis.getVoices();
 
-    const femaleKeywords = [
 
-        "female",
-        "woman",
-        "kadın",
-        "zira",
-        "yelda",
-        "defne",
-        "seda",
-        "emine",
-        "filiz",
-        "burcu",
-        "melis"
-
-    ];
-
-    /*
-     * Önce Türkçe + kadın adı/etiketi arıyoruz.
-     */
-
-    let femaleVoice =
-        voices.find(voice => {
+    let voice =
+        voices.find(v => {
 
             const lang =
-                (voice.lang || "").toLowerCase();
+                (v.lang || "").toLowerCase();
 
-            const name =
-                (voice.name || "").toLowerCase();
-
-            return (
-                lang.startsWith("tr") &&
-                femaleKeywords.some(keyword =>
-                    name.includes(keyword)
-                )
-            );
+            return lang === "tr-tr";
 
         });
 
 
-    /*
-     * Bazı cihazlarda kadın sesi
-     * "female" şeklinde belirtilir.
-     */
+    if (!voice) {
 
-    if (!femaleVoice) {
-
-        femaleVoice =
-            voices.find(voice => {
+        voice =
+            voices.find(v => {
 
                 const lang =
-                    (voice.lang || "").toLowerCase();
-
-                const name =
-                    (voice.name || "").toLowerCase();
-
-                return (
-                    lang.startsWith("tr") &&
-                    (
-                        name.includes("female") ||
-                        name.includes("woman") ||
-                        name.includes("kad")
-                    )
-                );
-
-            });
-
-    }
-
-
-    /*
-     * Kadın sesi yoksa herhangi bir Türkçe ses.
-     */
-
-    if (!femaleVoice) {
-
-        femaleVoice =
-            voices.find(voice => {
-
-                const lang =
-                    (voice.lang || "").toLowerCase();
+                    (v.lang || "").toLowerCase();
 
                 return lang.startsWith("tr");
 
@@ -595,12 +685,13 @@ function getTurkishFemaleVoice() {
 
     }
 
-    return femaleVoice || null;
+
+    return voice || null;
 }
 
 
 /* =====================================================
-   İETT TARZI SESLİ ANONS
+   SESLİ ANONS
    ===================================================== */
 
 function speak(text, onEnd = null) {
@@ -614,60 +705,118 @@ function speak(text, onEnd = null) {
         return;
     }
 
+
     window.speechSynthesis.cancel();
 
-    /*
-     * Anons metnini biraz daha doğal yapıyoruz.
-     */
 
     const utterance =
-        new SpeechSynthesisUtterance(text);
+        new SpeechSynthesisUtterance(
+            text
+        );
 
-    utterance.lang = "tr-TR";
+
+    utterance.lang =
+        "tr-TR";
+
 
     /*
-     * İETT tarzı:
-     * yavaş + anlaşılır.
+     * Yavaş ve anlaşılır anons.
      */
 
-    utterance.rate = 0.68;
+    utterance.rate =
+        0.70;
 
-    utterance.pitch = 1.0;
 
-    utterance.volume = 1.0;
+    utterance.pitch =
+        1.0;
+
+
+    utterance.volume =
+        1.0;
 
 
     const voice =
-        getTurkishFemaleVoice();
+        getTurkishVoice();
+
 
     if (voice) {
-        utterance.voice = voice;
+
+        utterance.voice =
+            voice;
+
     }
 
 
+    utterance.onend =
+        function() {
+
+            announcementBusy =
+                false;
+
+            if (typeof onEnd === "function") {
+                onEnd();
+            }
+
+        };
+
+
+    utterance.onerror =
+        function() {
+
+            announcementBusy =
+                false;
+
+        };
+
+
     /*
-     * Anons bitince yapılacak işlem.
-     */
-
-    utterance.onend = function() {
-
-        if (typeof onEnd === "function") {
-            onEnd();
-        }
-
-    };
-
-
-    /*
-     * Küçük gecikme,
-     * anonsun daha doğal başlamasını sağlar.
+     * DİN-DON bittikten sonra
+     * sesli anons başlar.
      */
 
     setTimeout(() => {
 
-        window.speechSynthesis.speak(utterance);
+        window.speechSynthesis.speak(
+            utterance
+        );
 
-    }, 250);
+    }, 800);
+}
+
+
+/* =====================================================
+   DİN-DON + ANONS
+   ===================================================== */
+
+function announceWithDingDong(text, callback = null) {
+
+    if (announcementBusy) {
+        return;
+    }
+
+
+    announcementBusy =
+        true;
+
+
+    window.speechSynthesis.cancel();
+
+
+    /*
+     * Önce elektronik DİN-DON.
+     */
+
+    playDingDong();
+
+
+    /*
+     * Sonra anons.
+     */
+
+    speak(
+        text,
+        callback
+    );
 }
 
 
@@ -677,38 +826,41 @@ function speak(text, onEnd = null) {
 
 function announceCurrent() {
 
-    if (movingAutomatically) {
+    if (announcementBusy) {
         return;
     }
+
 
     if (currentIndex >= stops.length) {
 
-        setStatus("Son durağa ulaşıldı.");
+        setStatus(
+            "Son durağa ulaşıldı."
+        );
 
-        speak("Son durağa ulaşıldı.");
+
+        announceWithDingDong(
+            "Son durağa ulaşıldı."
+        );
+
 
         return;
     }
+
 
     const stop =
         stops[currentIndex];
 
+
     setStatus(
-        "Şimdiki Durak: " + stop
+        "Şimdiki Durak: " +
+        stop
     );
 
 
-    /*
-     * Örneğin:
-     *
-     * "Şimdiki Durak... Acıbadem."
-     */
-
-    speak(
+    announceWithDingDong(
         "Şimdiki Durak... " +
         stop + "."
     );
-
 }
 
 
@@ -718,17 +870,29 @@ function announceCurrent() {
 
 function goNextStop() {
 
+    if (announcementBusy) {
+        return;
+    }
+
+
     if (currentIndex >= stops.length - 1) {
 
-        setStatus("Son duraktasınız.");
+        setStatus(
+            "Son duraktasınız."
+        );
 
-        speak("Son duraktasınız.");
+
+        announceWithDingDong(
+            "Son duraktasınız."
+        );
+
 
         return;
     }
 
 
     currentIndex++;
+
 
     renderStops();
 
@@ -738,11 +902,12 @@ function goNextStop() {
 
 
     setStatus(
-        "Sonraki Durak: " + stop
+        "Sonraki Durak: " +
+        stop
     );
 
 
-    speak(
+    announceWithDingDong(
         "Sonraki Durak... " +
         stop + "."
     );
@@ -757,7 +922,8 @@ function setStatus(message) {
 
     document.getElementById(
         "status"
-    ).textContent = message;
+    ).textContent =
+        message;
 }
 
 
@@ -769,14 +935,17 @@ function openSettings() {
 
     document.getElementById(
         "settingsModal"
-    ).style.display = "flex";
+    ).style.display =
+        "flex";
 }
+
 
 function closeSettings() {
 
     document.getElementById(
         "settingsModal"
-    ).style.display = "none";
+    ).style.display =
+        "none";
 }
 
 
@@ -789,10 +958,12 @@ function toggleClimate() {
     climateRunning =
         !climateRunning;
 
+
     const status =
         document.getElementById(
             "climateStatus"
         );
+
 
     if (climateRunning) {
 
@@ -806,6 +977,7 @@ function toggleClimate() {
 
             status.textContent =
                 "Klimalar çalışıyor.";
+
         }
 
     } else {
@@ -821,10 +993,12 @@ function selectClimate(number) {
     selectedClimate =
         number;
 
+
     const status =
         document.getElementById(
             "climateStatus"
         );
+
 
     if (climateRunning) {
 
@@ -849,30 +1023,47 @@ function restartSystem() {
 
     window.speechSynthesis.cancel();
 
-    currentIndex = 0;
 
-    climateRunning = false;
+    currentIndex =
+        0;
 
-    selectedClimate = null;
 
-    movingAutomatically = false;
+    climateRunning =
+        false;
+
+
+    selectedClimate =
+        null;
+
+
+    announcementBusy =
+        false;
+
 
     renderStops();
+
 
     document.getElementById(
         "climateStatus"
     ).textContent =
         "Klimalar kapalı.";
 
+
     setStatus(
         "Sistem yeniden başlatıldı. İlk durağa dönüldü."
     );
 
-    speak(
-        "Sistem yeniden başlatıldı."
-    );
 
     closeSettings();
+
+
+    /*
+     * Yeniden başlatma anonsu.
+     */
+
+    announceWithDingDong(
+        "Sistem yeniden başlatıldı."
+    );
 }
 
 
@@ -884,7 +1075,8 @@ function openHelp() {
 
     document.getElementById(
         "helpModal"
-    ).style.display = "flex";
+    ).style.display =
+        "flex";
 }
 
 
@@ -892,13 +1084,14 @@ function closeHelp() {
 
     document.getElementById(
         "helpModal"
-    ).style.display = "none";
+    ).style.display =
+        "none";
 }
 
 
 /* =====================================================
    112 SİMÜLASYONU
-   GERÇEK ARAMA YOK
+   GERÇEK ARAMA YAPILMAZ
    ===================================================== */
 
 function call112() {
@@ -907,15 +1100,18 @@ function call112() {
         "112 arandı. Bu bir simülasyondur."
     );
 
+
     alert(
         "112 arandı.\n\n" +
         "Bu bir simülasyondur. " +
         "Gerçek arama yapılmadı."
     );
 
-    speak(
+
+    announceWithDingDong(
         "112 arandı. Bu bir simülasyondur."
     );
+
 
     closeHelp();
 }
@@ -932,6 +1128,7 @@ function helpAction(action) {
         " seçildi. Bu bir simülasyondur."
     );
 
+
     alert(
         action +
         "\n\n" +
@@ -939,10 +1136,12 @@ function helpAction(action) {
         "Bu bir simülasyondur."
     );
 
-    speak(
+
+    announceWithDingDong(
         action +
         ". Yardım talebi oluşturuldu."
     );
+
 
     closeHelp();
 }
@@ -956,12 +1155,13 @@ renderStops();
 
 
 /*
- * Ses listesini yükle.
+ * Windows/Tarayıcı seslerini yükle.
  */
 
 if ("speechSynthesis" in window) {
 
     window.speechSynthesis.getVoices();
+
 
     window.speechSynthesis.onvoiceschanged =
         function() {
