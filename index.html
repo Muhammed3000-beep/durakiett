@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>İETT Metrobüs Simülasyonu</title>
+<title>İETT Metrobüs</title>
 
 <style>
 * {
@@ -55,7 +55,7 @@ header p {
     font-size: 19px;
 }
 
-/* DURAK EKRANI */
+/* DURAKLAR */
 
 .stop-window {
     display: flex;
@@ -73,7 +73,6 @@ header p {
     border-left: 6px solid #555;
     font-size: 17px;
     font-weight: 600;
-    transition: 0.25s;
 }
 
 .stop.current {
@@ -136,6 +135,18 @@ button:active {
 
 .dark {
     background: #42474b;
+}
+
+.door {
+    background: #34495e;
+}
+
+.door-open {
+    background: #087f23;
+}
+
+.door-selected {
+    outline: 3px solid #00c853;
 }
 
 /* DURUM */
@@ -212,10 +223,7 @@ button:active {
     margin-top: 8px;
 }
 
-/* MOBİL */
-
 @media(max-width:600px) {
-
     .buttons {
         grid-template-columns: 1fr;
     }
@@ -236,8 +244,8 @@ button:active {
 <body>
 
 <header>
-    <h1>İETT METROBÜS SİMÜLASYONU</h1>
-    <p>34G • Beylikdüzü Son Durak → Söğütlüçeşme</p>
+    <h1>İETT METROBÜS</h1>
+    <p>34MPE • Beylikdüzü Son Durak → Söğütlüçeşme</p>
 </header>
 
 <div class="container">
@@ -257,7 +265,7 @@ button:active {
     </div>
 
 
-    <!-- ANA BUTONLAR -->
+    <!-- KONTROLLER -->
 
     <div class="panel">
 
@@ -281,6 +289,39 @@ button:active {
                 🆘 Yardım
             </button>
 
+        </div>
+
+    </div>
+
+
+    <!-- KAPILAR -->
+
+    <div class="panel">
+
+        <h2>🚪 Kapılar</h2>
+
+        <div class="buttons">
+
+            <button class="door" onclick="openDoor(1)">
+                🚪 Kapı 1
+            </button>
+
+            <button class="door" onclick="openDoor(2)">
+                🚪 Kapı 2
+            </button>
+
+            <button class="door" onclick="openDoor(3)">
+                🚪 Kapı 3
+            </button>
+
+            <button class="red" onclick="closeDoors()">
+                🔒 Kapıları Kapat
+            </button>
+
+        </div>
+
+        <div id="doorStatus" class="status">
+            Kapılar kapalı.
         </div>
 
     </div>
@@ -407,19 +448,19 @@ button:active {
 <script>
 
 /* =====================================================
-   DURAK LİSTESİ
+   DURAKLAR
    ===================================================== */
 
 const stops = [
 
-    "B. SON DURAK",
+    "BEYLİKDÜZÜ, SON DURAK",
     "BEYKENT",
     "CUMHURİYET MAHALLESİ",
     "BEYLİKDÜZÜ BELEDİYESİ",
     "BEYLİKDÜZÜ",
     "GÜZELYURT",
     "HARAMİDERE",
-    "HARAMİDERE SANAYİ",
+    "HARAMİDERE SANAYİ SİTESİ",
     "SAADETDERE MAHALLESİ",
     "MUSTAFA KEMALPAŞA",
 
@@ -459,7 +500,6 @@ const stops = [
 
 ];
 
-
 let currentIndex = 0;
 
 let climateRunning = false;
@@ -468,10 +508,11 @@ let selectedClimate = null;
 
 let announcementBusy = false;
 
+let openDoors = [];
+
 
 /* =====================================================
-   DURAKLARI GÖSTER
-   SADECE 4 SATIR
+   DURAK EKRANI
    ===================================================== */
 
 function renderStops() {
@@ -508,7 +549,6 @@ function renderStops() {
 
             div.textContent =
                 "....................";
-
         }
 
         windowElement.appendChild(div);
@@ -517,8 +557,7 @@ function renderStops() {
 
 
 /* =====================================================
-   DİN-DON SESİ
-   HARİCİ MP3 GEREKTİRMEZ
+   DİN-DON
    ===================================================== */
 
 function playDingDong() {
@@ -527,23 +566,16 @@ function playDingDong() {
         window.AudioContext ||
         window.webkitAudioContext;
 
-
-    if (!AudioContext) {
-        return;
-    }
-
+    if (!AudioContext) return;
 
     const ctx =
         new AudioContext();
-
 
     const now =
         ctx.currentTime;
 
 
-    /*
-     * İLK SES: DİN
-     */
+    /* DİN */
 
     const osc1 =
         ctx.createOscillator();
@@ -551,14 +583,12 @@ function playDingDong() {
     const gain1 =
         ctx.createGain();
 
-
     osc1.type = "sine";
 
     osc1.frequency.setValueAtTime(
         880,
         now
     );
-
 
     gain1.gain.setValueAtTime(
         0.0001,
@@ -575,24 +605,14 @@ function playDingDong() {
         now + 0.30
     );
 
-
     osc1.connect(gain1);
-
-    gain1.connect(
-        ctx.destination
-    );
-
+    gain1.connect(ctx.destination);
 
     osc1.start(now);
-
-    osc1.stop(
-        now + 0.32
-    );
+    osc1.stop(now + 0.32);
 
 
-    /*
-     * İKİNCİ SES: DON
-     */
+    /* DON */
 
     const osc2 =
         ctx.createOscillator();
@@ -600,14 +620,12 @@ function playDingDong() {
     const gain2 =
         ctx.createGain();
 
-
     osc2.type = "sine";
 
     osc2.frequency.setValueAtTime(
         660,
         now + 0.34
     );
-
 
     gain2.gain.setValueAtTime(
         0.0001,
@@ -624,41 +642,26 @@ function playDingDong() {
         now + 0.70
     );
 
-
     osc2.connect(gain2);
+    gain2.connect(ctx.destination);
 
-    gain2.connect(
-        ctx.destination
-    );
-
-
-    osc2.start(
-        now + 0.34
-    );
-
-    osc2.stop(
-        now + 0.72
-    );
-
+    osc2.start(now + 0.34);
+    osc2.stop(now + 0.72);
 
     setTimeout(() => {
-
         ctx.close();
-
     }, 1000);
 }
 
 
 /* =====================================================
-   TÜRKÇE SES BUL
-   WINDOWS'TA GENELLİKLE TOLGA
+   TÜRKÇE WINDOWS SESİ
    ===================================================== */
 
 function getTurkishVoice() {
 
     const voices =
         window.speechSynthesis.getVoices();
-
 
     let voice =
         voices.find(v => {
@@ -667,7 +670,6 @@ function getTurkishVoice() {
                 (v.lang || "").toLowerCase();
 
             return lang === "tr-tr";
-
         });
 
 
@@ -680,11 +682,8 @@ function getTurkishVoice() {
                     (v.lang || "").toLowerCase();
 
                 return lang.startsWith("tr");
-
             });
-
     }
-
 
     return voice || null;
 }
@@ -705,31 +704,20 @@ function speak(text, onEnd = null) {
         return;
     }
 
-
     window.speechSynthesis.cancel();
 
 
     const utterance =
-        new SpeechSynthesisUtterance(
-            text
-        );
-
+        new SpeechSynthesisUtterance(text);
 
     utterance.lang =
         "tr-TR";
 
-
-    /*
-     * Yavaş ve anlaşılır anons.
-     */
-
     utterance.rate =
         0.70;
 
-
     utterance.pitch =
         1.0;
-
 
     utterance.volume =
         1.0;
@@ -738,12 +726,9 @@ function speak(text, onEnd = null) {
     const voice =
         getTurkishVoice();
 
-
     if (voice) {
-
         utterance.voice =
             voice;
-
     }
 
 
@@ -756,7 +741,6 @@ function speak(text, onEnd = null) {
             if (typeof onEnd === "function") {
                 onEnd();
             }
-
         };
 
 
@@ -765,14 +749,8 @@ function speak(text, onEnd = null) {
 
             announcementBusy =
                 false;
-
         };
 
-
-    /*
-     * DİN-DON bittikten sonra
-     * sesli anons başlar.
-     */
 
     setTimeout(() => {
 
@@ -794,24 +772,12 @@ function announceWithDingDong(text, callback = null) {
         return;
     }
 
-
     announcementBusy =
         true;
 
-
     window.speechSynthesis.cancel();
 
-
-    /*
-     * Önce elektronik DİN-DON.
-     */
-
     playDingDong();
-
-
-    /*
-     * Sonra anons.
-     */
 
     speak(
         text,
@@ -826,9 +792,7 @@ function announceWithDingDong(text, callback = null) {
 
 function announceCurrent() {
 
-    if (announcementBusy) {
-        return;
-    }
+    if (announcementBusy) return;
 
 
     if (currentIndex >= stops.length) {
@@ -837,11 +801,9 @@ function announceCurrent() {
             "Son durağa ulaşıldı."
         );
 
-
         announceWithDingDong(
             "Son durağa ulaşıldı."
         );
-
 
         return;
     }
@@ -870,9 +832,7 @@ function announceCurrent() {
 
 function goNextStop() {
 
-    if (announcementBusy) {
-        return;
-    }
+    if (announcementBusy) return;
 
 
     if (currentIndex >= stops.length - 1) {
@@ -881,18 +841,15 @@ function goNextStop() {
             "Son duraktasınız."
         );
 
-
         announceWithDingDong(
             "Son duraktasınız."
         );
-
 
         return;
     }
 
 
     currentIndex++;
-
 
     renderStops();
 
@@ -915,15 +872,68 @@ function goNextStop() {
 
 
 /* =====================================================
-   DURUM
+   KAPI SİSTEMİ
    ===================================================== */
 
-function setStatus(message) {
+function openDoor(number) {
 
-    document.getElementById(
-        "status"
-    ).textContent =
-        message;
+    /*
+     * Kapı zaten açıksa tekrar ekleme.
+     */
+
+    if (!openDoors.includes(number)) {
+
+        openDoors.push(number);
+
+    }
+
+
+    updateDoorDisplay();
+
+
+    setStatus(
+        "Kapı " +
+        number +
+        " açıldı."
+    );
+}
+
+
+function closeDoors() {
+
+    openDoors = [];
+
+    updateDoorDisplay();
+
+
+    setStatus(
+        "Tüm kapılar kapatıldı."
+    );
+}
+
+
+function updateDoorDisplay() {
+
+    const status =
+        document.getElementById(
+            "doorStatus"
+        );
+
+
+    if (openDoors.length === 0) {
+
+        status.textContent =
+            "Kapılar kapalı.";
+
+        return;
+    }
+
+
+    status.textContent =
+        "Açık kapılar: " +
+        openDoors
+            .map(number => "Kapı " + number)
+            .join(", ");
 }
 
 
@@ -977,7 +987,6 @@ function toggleClimate() {
 
             status.textContent =
                 "Klimalar çalışıyor.";
-
         }
 
     } else {
@@ -1023,24 +1032,19 @@ function restartSystem() {
 
     window.speechSynthesis.cancel();
 
+    currentIndex = 0;
 
-    currentIndex =
-        0;
+    climateRunning = false;
 
+    selectedClimate = null;
 
-    climateRunning =
-        false;
+    announcementBusy = false;
 
-
-    selectedClimate =
-        null;
-
-
-    announcementBusy =
-        false;
-
+    openDoors = [];
 
     renderStops();
+
+    updateDoorDisplay();
 
 
     document.getElementById(
@@ -1056,10 +1060,6 @@ function restartSystem() {
 
     closeSettings();
 
-
-    /*
-     * Yeniden başlatma anonsu.
-     */
 
     announceWithDingDong(
         "Sistem yeniden başlatıldı."
@@ -1091,7 +1091,6 @@ function closeHelp() {
 
 /* =====================================================
    112 SİMÜLASYONU
-   GERÇEK ARAMA YAPILMAZ
    ===================================================== */
 
 function call112() {
@@ -1153,15 +1152,12 @@ function helpAction(action) {
 
 renderStops();
 
+updateDoorDisplay();
 
-/*
- * Windows/Tarayıcı seslerini yükle.
- */
 
 if ("speechSynthesis" in window) {
 
     window.speechSynthesis.getVoices();
-
 
     window.speechSynthesis.onvoiceschanged =
         function() {
